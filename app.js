@@ -350,23 +350,26 @@
   }
 
   function renderTimeline() {
-    const rows = pageSlice();
-    if (!rows.length) {
+    const allGroups = groupedByProject(state.filtered);
+    const allEntries = sortedGroupEntries(allGroups);
+
+    if (!allEntries.length) {
       el.content.innerHTML = '<div class="empty">No results match current filters.</div>';
       return;
     }
+
+    const start = (state.page - 1) * state.pageSize;
+    const pageEntries = allEntries.slice(start, start + state.pageSize);
 
     const globalWindow = getGlobalWindow(state.filtered);
     const quarterSegments = getQuarterSegments(globalWindow);
     const yearSegments = getYearSegments(globalWindow);
     const todayOffset = getTodayOffset(globalWindow);
-    const allGroups = groupedByProject(state.filtered);
-    const groups = groupedByProject(rows);
     const out = [];
 
     out.push('<section class="gantt-board">');
     out.push('<div class="gantt-header">');
-    const anyExpanded = Array.from(groups.keys()).some((p) => !state.collapsedProjects[p]);
+    const anyExpanded = pageEntries.some(([p]) => !state.collapsedProjects[p]);
     out.push('<div class="gantt-header-left"><button id="collapseAllBtn" class="collapse-all-btn" title="' + (anyExpanded ? 'Collapse all' : 'Expand all') + '">' + (anyExpanded ? '&#8863;' : '&#8862;') + '</button><span>Task</span></div>');
     out.push('<div class="gantt-header-right">');
     for (const seg of yearSegments) {
@@ -381,8 +384,8 @@
     out.push('</div>');
     out.push('</div>');
 
-    for (const [project, items] of sortedGroupEntries(groups)) {
-      const projectWindow = getProjectWindow(allGroups.get(project) || items) || globalWindow;
+    for (const [project, items] of pageEntries) {
+      const projectWindow = getProjectWindow(items) || globalWindow;
       const projectSchedule = getScheduleMetrics({ startDate: projectWindow?.min || null, endDate: projectWindow?.max || null, state: "OPEN", status: "IN_PROGRESS" }, globalWindow);
       const key = encodeURIComponent(project);
       const collapsed = Boolean(state.collapsedProjects[project]);
@@ -444,7 +447,7 @@
     }
 
     out.push('</section>');
-    out.push(renderPager());
+    out.push(renderPager(allEntries.length));
     el.content.innerHTML = out.join("");
   }
 
@@ -479,8 +482,8 @@
     el.content.innerHTML = out.join("");
   }
 
-  function renderPager() {
-    const total = state.filtered.length;
+  function renderPager(total) {
+    if (total === undefined) total = state.filtered.length;
     const pages = Math.max(1, Math.ceil(total / state.pageSize));
     const disablePrev = state.page <= 1 ? "disabled" : "";
     const disableNext = state.page >= pages ? "disabled" : "";
