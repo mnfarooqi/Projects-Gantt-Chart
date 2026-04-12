@@ -42,6 +42,8 @@
     saveDataBtn: document.getElementById("saveDataBtn"),
     saveJsonBtn: document.getElementById("saveJsonBtn"),
     projectSortSelect: document.getElementById("projectSortSelect"),
+    skipClosedProjects: document.getElementById("skipClosedProjects"),
+    skipClosedIssues: document.getElementById("skipClosedIssues"),
   };
 
   const sortOptions = [
@@ -668,13 +670,19 @@
     setStatus("Fetching projects…");
 
     try {
-      const projects = await ghListProjects(token, GH_ORG);
+      const allProjects = await ghListProjects(token, GH_ORG);
+      const projects = el.skipClosedProjects.checked
+        ? allProjects.filter((p) => !p.closed)
+        : allProjects;
       const consolidated = [];
 
       for (let i = 0; i < projects.length; i++) {
         const p = projects[i];
         setStatus("Project " + (i + 1) + " / " + projects.length + ": " + p.title);
-        const items = await ghListProjectItems(token, p.id);
+        const rawItems = await ghListProjectItems(token, p.id);
+        const items = el.skipClosedIssues.checked
+          ? rawItems.filter((it) => it.content?.state !== "CLOSED")
+          : rawItems;
         for (const it of items) {
           consolidated.push({
             org: GH_ORG,

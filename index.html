@@ -39,6 +39,14 @@
             Token
             <input id="ghToken" type="password" placeholder="ghp_..." autocomplete="off" spellcheck="false" />
           </label>
+          <label class="gh-sync-check">
+            <input id="skipClosedProjects" type="checkbox" checked />
+            Skip closed projects
+          </label>
+          <label class="gh-sync-check">
+            <input id="skipClosedIssues" type="checkbox" checked />
+            Skip closed issues
+          </label>
           <button id="refreshBtn" class="gh-load-btn">Load data</button>
           <div id="refreshStatus" class="gh-status"></div>
           <a id="saveDataBtn" class="gh-save-link" download="data.js" hidden>&#8595; Save data.js</a>
