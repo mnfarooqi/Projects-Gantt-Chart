@@ -12,6 +12,9 @@
       status: "ALL",
       priority: "ALL",
       state: "ALL",
+      startDateFrom: "",
+      endDateTo: "",
+      assignee: "ALL",
     },
     sort: "startAsc",
     projectSort: "nameAsc",
@@ -40,8 +43,10 @@
     refreshBtn: document.getElementById("refreshBtn"),
     refreshStatus: document.getElementById("refreshStatus"),
     saveDataBtn: document.getElementById("saveDataBtn"),
-    saveJsonBtn: document.getElementById("saveJsonBtn"),
     projectSortSelect: document.getElementById("projectSortSelect"),
+    startDateFrom: document.getElementById("startDateFrom"),
+    endDateTo: document.getElementById("endDateTo"),
+    assigneeFilter: document.getElementById("assigneeFilter"),
     skipClosedProjects: document.getElementById("skipClosedProjects"),
     skipClosedIssues: document.getElementById("skipClosedIssues"),
   };
@@ -105,6 +110,7 @@
       endDate: safeDate(fields["End date"]),
       updatedAt: safeDate(row.item_updatedAt),
       createdAt: safeDate(row.item_createdAt),
+      assignees: Array.isArray(row.assignees) ? row.assignees : [],
       fields,
       raw: row,
     };
@@ -139,6 +145,10 @@
     el.statusFilter.innerHTML = uniqueValues(state.records, "status").map(optionHTML).join("");
     el.priorityFilter.innerHTML = uniqueValues(state.records, "priority").map(optionHTML).join("");
     el.stateFilter.innerHTML = uniqueValues(state.records, "state").map(optionHTML).join("");
+    const allLogins = ["ALL", "Unassigned"].concat(
+      Array.from(new Set(state.records.flatMap((r) => r.assignees))).sort((a, b) => a.localeCompare(b))
+    );
+    el.assigneeFilter.innerHTML = allLogins.map(optionHTML).join("");
   }
 
   function setupSort() {
@@ -155,6 +165,21 @@
         if (state.filters.status !== "ALL" && r.status !== state.filters.status) return false;
         if (state.filters.priority !== "ALL" && r.priority !== state.filters.priority) return false;
         if (state.filters.state !== "ALL" && r.state !== state.filters.state) return false;
+        if (state.filters.assignee !== "ALL") {
+          if (state.filters.assignee === "Unassigned") {
+            if (r.assignees.length > 0) return false;
+          } else if (!r.assignees.includes(state.filters.assignee)) {
+            return false;
+          }
+        }
+        if (state.filters.startDateFrom) {
+          const from = new Date(state.filters.startDateFrom);
+          if (!r.startDate || r.startDate < from) return false;
+        }
+        if (state.filters.endDateTo) {
+          const to = new Date(state.filters.endDateTo);
+          if (!r.endDate || r.endDate > to) return false;
+        }
 
         if (!q) return true;
         return [r.title, r.projectTitle, r.repo, r.status, r.priority].join(" ").toLowerCase().includes(q);
@@ -612,8 +637,8 @@
                 id createdAt updatedAt
                 content {
                   __typename
-                  ... on Issue { id number title state url repository { nameWithOwner } }
-                  ... on PullRequest { id number title state url repository { nameWithOwner } }
+                  ... on Issue { id number title state url repository { nameWithOwner } assignees(first: 10) { nodes { login } } }
+                  ... on PullRequest { id number title state url repository { nameWithOwner } assignees(first: 10) { nodes { login } } }
                 }
                 fieldValues(first: 50) {
                   nodes {
@@ -669,7 +694,6 @@
 
     el.refreshBtn.disabled = true;
     el.saveDataBtn.hidden = true;
-    el.saveJsonBtn.hidden = true;
     setStatus("Fetching projects…");
 
     try {
@@ -702,6 +726,7 @@
             title: it.content?.title ?? null,
             state: it.content?.state ?? null,
             url: it.content?.url ?? null,
+            assignees: it.content?.assignees?.nodes?.map((a) => a.login) ?? [],
             fields: ghNormalizeFields(it.fieldValues),
           });
         }
@@ -714,19 +739,13 @@
       setupFilters();
       applyFilters();
 
-      // Build download links
+      // Build download link
       const dataJs = "window.MQSS_DATA = " + JSON.stringify(consolidated, null, 2) + ";\n";
-      const rawJson = JSON.stringify(consolidated, null, 2);
 
       const blobJs = new Blob([dataJs], { type: "text/javascript" });
       el.saveDataBtn.href = URL.createObjectURL(blobJs);
       el.saveDataBtn.textContent = "\u2193 Save data.js (" + consolidated.length + " items)";
       el.saveDataBtn.hidden = false;
-
-      const blobJson = new Blob([rawJson], { type: "application/json" });
-      el.saveJsonBtn.href = URL.createObjectURL(blobJson);
-      el.saveJsonBtn.textContent = "\u2193 Save mqss_projects_items.json";
-      el.saveJsonBtn.hidden = false;
 
       setStatus("Loaded " + consolidated.length + " items from " + projects.length + " projects.", "gh-status--success");
     } catch (err) {
@@ -769,12 +788,30 @@
       applyFilters();
     });
 
+    el.startDateFrom.addEventListener("change", (ev) => {
+      state.filters.startDateFrom = ev.target.value;
+      applyFilters();
+    });
+
+    el.endDateTo.addEventListener("change", (ev) => {
+      state.filters.endDateTo = ev.target.value;
+      applyFilters();
+    });
+
+    el.assigneeFilter.addEventListener("change", (ev) => {
+      state.filters.assignee = ev.target.value;
+      applyFilters();
+    });
+
     el.resetFilters.addEventListener("click", () => {
       state.search = "";
       state.filters.project = "ALL";
       state.filters.status = "ALL";
       state.filters.priority = "ALL";
       state.filters.state = "ALL";
+      state.filters.startDateFrom = "";
+      state.filters.endDateTo = "";
+      state.filters.assignee = "ALL";
       state.sort = "startAsc";
       state.page = 1;
       el.searchInput.value = "";
@@ -782,6 +819,9 @@
       el.statusFilter.value = "ALL";
       el.priorityFilter.value = "ALL";
       el.stateFilter.value = "ALL";
+      el.startDateFrom.value = "";
+      el.endDateTo.value = "";
+      el.assigneeFilter.value = "ALL";
       el.sortSelect.value = state.sort;
       applyFilters();
     });
@@ -901,6 +941,9 @@
     el.statusFilter.value = state.filters.status;
     el.priorityFilter.value = state.filters.priority;
     el.stateFilter.value = state.filters.state;
+    el.assigneeFilter.value = state.filters.assignee;
+    el.startDateFrom.value = state.filters.startDateFrom || "";
+    el.endDateTo.value = state.filters.endDateTo || "";
 
     if (state.view === "table") {
       el.tableBtn.classList.add("active");

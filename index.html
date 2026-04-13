@@ -29,6 +29,9 @@
       <label>Status<select id="statusFilter"></select></label>
       <label>Priority<select id="priorityFilter"></select></label>
       <label>State<select id="stateFilter"></select></label>
+      <label>Assignee<select id="assigneeFilter"></select></label>
+      <label>Start date from<input type="date" id="startDateFrom" /></label>
+      <label>End date to<input type="date" id="endDateTo" /></label>
       <label>Project order<select id="projectSortSelect"></select></label>
       <button id="resetFilters" class="ghost">Reset</button>
       <section class="stats" id="stats"></section>
@@ -50,7 +53,6 @@
           <button id="refreshBtn" class="gh-load-btn">Load data</button>
           <div id="refreshStatus" class="gh-status"></div>
           <a id="saveDataBtn" class="gh-save-link" download="data.js" hidden>&#8595; Save data.js</a>
-          <a id="saveJsonBtn" class="gh-save-link" download="mqss_projects_items.json" hidden>&#8595; Save mqss_projects_items.json</a>
         </div>
       </details>
     </aside>

@@ -295,7 +295,7 @@ button {
   position: sticky;
   top: 0;
   z-index: 3;
-  background: #f6f8fa;
+  background: #e0eaff;
   border-bottom: 1px solid var(--border);
 }
 
@@ -331,7 +331,7 @@ button {
   min-height: 46px;
   border: 1px solid #d8dee4;
   border-radius: 8px;
-  background: linear-gradient(90deg, #f6f8fa 0%, #eef2f6 100%);
+  background: linear-gradient(90deg, #e0eaff 0%, #d0e0ff 100%);
   overflow: hidden;
 }
 
